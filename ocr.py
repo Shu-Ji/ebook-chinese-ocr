@@ -1,13 +1,21 @@
 # coding: u8
 
+from hashlib import md5 as _m5
 from itertools import izip
+import cPickle as pickle
+import os
+import time
 
 from PIL import Image
 
 
+md5 = lambda s: _m5(s).hexdigest()
+
+
 class Otsu(object):
 
-    FAST_VAL = 255
+    FAST_VAL = 255  # 只要是非0就可以
+    BINARY_THRESHOLD = 190  # 二值化阈值
 
     def __init__(self, path=None, im=None):
         if im is None:
@@ -58,7 +66,8 @@ class Otsu(object):
     def open_image(self, path):
         im = Image.open(path)
         self.im = im.convert('L')  # 灰度
-        self.im = self.im.point(lambda p: p > 150 and 255)  # 二值
+        self.im = self.im.point(
+                lambda p: p > self.BINARY_THRESHOLD and 255)  # 二值
         return self
 
     def cut_to_lines(self, rotate=True, show=False):
@@ -90,25 +99,92 @@ class Otsu(object):
                     char = self.FAST_VAL
                     ends.append(i - 1)  # i为0的位置，i-1则为FAST_VAL的位置
 
-        print starts, ends
+        if 0 and not rotate:
+            # 修正被分割的左右结构
+            # 左右结构之间的间隙比较小，这里取间隙小于Npx时认为是左右结构
+            N = 2
+            new_starts = []
+            new_ends = []
+            last_s = last_e = 0
+
+            def push(start, end):
+                new_starts.append(start)
+                new_ends.append(end)
+
+            for start, end in izip(starts, ends):
+                if last_s == 0:
+                    push(start, end)
+                elif start - last_e < N:
+                    new_ends[-1] = end
+                else:
+                    push(start, end)
+
+                last_s, last_e = start, end
+
+            starts, ends = new_starts, new_ends
+
+        i = 1
         for start, end in izip(starts, ends):
             # graph中数据是旋转90度的结果，故保存的数据对原图像来说是y轴
             if rotate:
                 box = (0, start, self.w, end)
             else:
                 box = (start, 0, end, self.h)
-            yield self.im.crop(box)
+            yield self.im.crop(box), i
+            i += 1
 
 
 if __name__ == '__main__':
-    otsu = Otsu('./imgs/test-11.jpg')
-    first_line = list(otsu.cut_to_lines())[-1]
-    #first_line.show()
-    otsu = Otsu(im=first_line)
-    i = 10
-    for word in otsu.cut_to_lines(rotate=False):
-        path = 'cut/%s.jpg' % i
-        #word.show(path)
-        word.save(path)
-        i += 1
-        pass
+    import glob
+    glob.glob('./imgs/*.jpg')
+    otsu = Otsu('/home/finn/rubbish/ocr/test-10003.bmp')
+    #otsu.im.show()
+    i = 1000
+
+
+    pickle_file = 'data.pickle'
+    samples = pickle.load(open(pickle_file, 'rb'))
+    bak_pickle_file = '%s._%d_%s' % (pickle_file, time.time(), '.bak')
+    open(bak_pickle_file, 'wb').write(open(pickle_file, 'rb').read())
+
+    """
+    for fn in glob.glob('./cls/*.png'):
+        m5, char = fn.split('.')[1].split('/')[-1].split('_')
+        samples[m5] = [char, char, char]
+    """
+
+    """ replace
+    m5 = '0926e148f52cb3f04cff1cb71981f28c'
+    a = samples[m5]
+    #a[-1] = '知-l'
+    samples[m5] = a
+    """
+
+    for line, line_num in otsu.cut_to_lines():
+        #line.show()
+        line.save('/tmp/cut/0000000_cur_line.png')
+        otsu = Otsu(im=line)
+        for word, col_num in otsu.cut_to_lines(rotate=False, show=0):
+            _word = word
+            word = word.resize((48, 48), Image.BICUBIC).convert('1')
+            data = ''.join(str(p) for p in word.getdata()).replace('255', '1')
+            m5 = md5(data)
+            if m5 not in samples:
+                path = '/tmp/cut/%s.%s_%s.png' % (line_num, col_num, m5)
+                word.save(path)
+                # 请开着目录/tmp/cut方便输入
+                char = raw_input('input:')
+                os.remove(path)
+                os.system('clear')
+                samples[m5] = [word.tostring(), data, char]
+                pickle.dump(samples, open(pickle_file, 'wb'))
+                path = 'cls/%s_%s.png' % (m5, char)
+                _word.save(path)
+            else:
+                char = samples[m5][-1]
+                #samples[m5] = [word.tostring(), data, char]
+                print '**:', char
+
+            path = 'cut/%s.%s_%s_%s.png' % (line_num, col_num, m5, char)
+            _word.save(path)
+            i += 1

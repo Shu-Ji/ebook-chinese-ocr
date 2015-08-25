@@ -18,3 +18,7 @@ ebook of duokan ocr
 切割好行按照垂直投影图切割字符：
 
 ![](https://github.com/Shu-Ji/ebook-chinese-ocr/raw/master/docs/cut_to_words.png)
+
+修正左右结构被切割：
+
+![](https://github.com/Shu-Ji/ebook-chinese-ocr/raw/master/docs/fixed-left-right-structure.png)

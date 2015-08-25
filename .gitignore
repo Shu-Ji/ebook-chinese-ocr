@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 imgs
 cut
+cls
+*.swp
+*.bak
 
 # C extensions
 *.so
