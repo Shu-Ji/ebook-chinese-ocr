@@ -138,10 +138,14 @@ class Otsu(object):
 if __name__ == '__main__':
     import glob
     glob.glob('./imgs/*.jpg')
-    otsu = Otsu('/home/finn/rubbish/ocr/test-10004.bmp')
+    otsu = Otsu('/home/finn/rubbish/ocr/test-10001.bmp')
     #otsu.im.show()
     i = 1000
 
+    def update(m5, char):
+        a = samples[m5]
+        a[-1] = char
+        samples[m5] = a
 
     pickle_file = 'data.pickle'
     samples = pickle.load(open(pickle_file, 'rb'))
@@ -154,12 +158,7 @@ if __name__ == '__main__':
         samples[m5] = [char, char, char]
     """
 
-    """ replace
-    m5 = '0926e148f52cb3f04cff1cb71981f28c'
-    a = samples[m5]
-    #a[-1] = '知-l'
-    samples[m5] = a
-    """
+    update('0538fd2620d99c82ea1627987d7c4e96', '偕-l')
 
     for line, line_num in otsu.cut_to_lines():
         #line.show()
@@ -201,7 +200,7 @@ if __name__ == '__main__':
             else:
                 char = samples[m5][-1]
                 #samples[m5] = [word.tostring(), data, char]
-                print '**:', char
+                print m5, char
 
             path = 'cut/%s.%s_%s_%s.png' % (line_num, col_num, m5, char)
             _word.save(path)
