@@ -7,6 +7,7 @@ import os
 import time
 
 from PIL import Image
+import Levenshtein
 
 
 md5 = lambda s: _m5(s).hexdigest()
@@ -137,7 +138,7 @@ class Otsu(object):
 if __name__ == '__main__':
     import glob
     glob.glob('./imgs/*.jpg')
-    otsu = Otsu('/home/finn/rubbish/ocr/test-10003.bmp')
+    otsu = Otsu('/home/finn/rubbish/ocr/test-10004.bmp')
     #otsu.im.show()
     i = 1000
 
@@ -170,10 +171,27 @@ if __name__ == '__main__':
             data = ''.join(str(p) for p in word.getdata()).replace('255', '1')
             m5 = md5(data)
             if m5 not in samples:
+                # 请开着目录/tmp/cut方便输入
                 path = '/tmp/cut/%s.%s_%s.png' % (line_num, col_num, m5)
                 word.save(path)
-                # 请开着目录/tmp/cut方便输入
-                char = raw_input('input:')
+
+                min_distance = len(data)
+                maybe = None
+                for key, value in samples.items():
+                    binary_string = value[-2]
+                    try:
+                        distance = Levenshtein.hamming(binary_string, data)
+                    except:
+                        del samples[key]
+                    if min_distance > distance:
+                        maybe = value
+                        min_distance = distance
+                maychar = maybe[-1]
+                print 'maybe:', maychar, min_distance
+                char = raw_input('input(press RETURN to accept %s):' % maychar)
+                if char == '':
+                    char = maychar
+
                 os.remove(path)
                 os.system('clear')
                 samples[m5] = [word.tostring(), data, char]
